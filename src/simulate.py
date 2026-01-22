@@ -1,25 +1,27 @@
 # src/simulate.py
+# Estimate Pid, Pdir, Pfar by simulating random voting outcomes (stochastic simulation)
 from __future__ import annotations
 import numpy as np
 
-def single_run_identification(N: int, m: int, p: float, rng: np.random.Generator) -> tuple[int, int]:
+def single_run_identification(N, m, p, rng):
     # if random number is less than p, classifier i votes for target class
-    correct = rng.random(N) < p
-    nt = int(correct.sum())
-    wrong = N - nt
+    random_samples = rng.random(N)
+    correct = random_samples < p 
+    nt = int(correct.sum()) # number of voters for target class
+    wrong = N - nt 
 
     if wrong > 0:
         # wrong votes go uniformly to classes 1..m-1, equation 1 from paper
-        non_votes = rng.integers(1, m, size=wrong)  # 1..m-1 inclusive
+        non_votes = rng.integers(1, m, size=wrong)
         counts = np.bincount(non_votes, minlength=m)
-        max_non = int(counts[1:].max())
+        max_ns = int(counts[1:].max())
     else:
-        max_non = 0
+        max_ns = 0
 
-    return nt, max_non
+    return nt, max_ns
 
 # Identification Rate, Pid = P(Nt > Ns max), Eq 6
-def pid(N: int, m: int, p: float, trials: int = 5000, seed: int = 0) -> float:
+def pid(N, m, p, trials=5000, seed=0):
     rng = np.random.default_rng(seed)
     successes = 0
 
@@ -31,7 +33,7 @@ def pid(N: int, m: int, p: float, trials: int = 5000, seed: int = 0) -> float:
     return successes / trials # Ratio of number of successes over the total trials
 
 # Detection and Identification Rate, Pdir = P(Nt > Ns max and Nt >= T), Eq 14
-def pdir(N: int, m: int, p: float, T: int, trials: int = 5000, seed: int = 0) -> float:
+def pdir(N, m, p, T, trials=5000, seed=0) :
     rng = np.random.default_rng(seed)
     successes = 0
 
@@ -43,7 +45,7 @@ def pdir(N: int, m: int, p: float, T: int, trials: int = 5000, seed: int = 0) ->
     return successes / trials
 
 # False Acceptance Rate, Pfar = P(Ns' max >= T), Eq 19
-def pfar(N: int, m: int, T: int, trials: int = 5000, seed: int = 0) -> float:
+def pfar(N, m, T, trials=5000, seed=0):
     rng = np.random.default_rng(seed)
     false_accepts = 0
 
@@ -56,7 +58,7 @@ def pfar(N: int, m: int, T: int, trials: int = 5000, seed: int = 0) -> float:
     return false_accepts / trials
 
 # EXTENSION Heterogeneous accuracies (pi) + weighted plurality
-def pid_hetero_unweighted(N: int, m: int, pi: np.ndarray, trials: int = 5000, seed: int = 0) -> float:
+def pid_hetero_unweighted(N, m, pi, trials=5000, seed=0):
     # Extension identification with heterogeneous accuracies pi, unweighted.
     rng = np.random.default_rng(seed)
     successes = 0
@@ -81,7 +83,7 @@ def pid_hetero_unweighted(N: int, m: int, pi: np.ndarray, trials: int = 5000, se
     return successes / trials
 
 
-def pid_hetero_weighted(N: int, m: int, pi: np.ndarray, trials: int = 5000, seed: int = 0) -> float:
+def pid_hetero_weighted(N, m, pi, trials=5000, seed=0):
     # Extension identification with heterogeneous accuracies pi, weighted.
     rng = np.random.default_rng(seed)
 
@@ -122,7 +124,7 @@ def pid_hetero_weighted(N: int, m: int, pi: np.ndarray, trials: int = 5000, seed
     return successes / trials
 
 
-def pdir_hetero_unweighted(N: int, m: int, pi: np.ndarray, T: int, trials: int = 5000, seed: int = 0) -> float:
+def pdir_hetero_unweighted(N, m, pi, T, trials = 5000, seed=0) :
     # Extension watchlist with heterogeneous accuracies pi, unweighted.
     rng = np.random.default_rng(seed)
     successes = 0
@@ -146,7 +148,7 @@ def pdir_hetero_unweighted(N: int, m: int, pi: np.ndarray, T: int, trials: int =
     return successes / trials
 
 
-def pdir_hetero_weighted(N: int, m: int, pi: np.ndarray, T: int, trials: int = 5000, seed: int = 0) -> float:
+def pdir_hetero_weighted(N, m, pi, T, trials = 5000, seed = 0) :
     # Extension watchlist with heterogeneous accuracies pi, weighted.
     rng = np.random.default_rng(seed)
 
@@ -182,7 +184,7 @@ def pdir_hetero_weighted(N: int, m: int, pi: np.ndarray, T: int, trials: int = 5
     return successes / trials
 
 
-def pfar_weighted_outsider(N: int, m: int, pi: np.ndarray, T: int, trials: int = 5000, seed: int = 0) -> float:
+def pfar_weighted_outsider(N, m, pi, T, trials=5000, seed=0):
     # Extension outsider false acceptance for weighted plurality.
     rng = np.random.default_rng(seed)
 

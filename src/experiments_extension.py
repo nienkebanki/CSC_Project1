@@ -12,108 +12,70 @@ from simulate import (
     pfar_weighted_outsider,
 )
 
-def sample_pi_beta(N: int, mean_p: float, kappa: float, seed: int) -> np.ndarray:
-    # Heterogeneous accuracies p_i sampled from Beta distribution
+# Sample heterogeneous accuracies p_i from a Beta distribution
+def sample_pi_beta(N, mean_p, strength, seed):
     rng = np.random.default_rng(seed)
-    alpha = mean_p * kappa
-    beta = (1.0 - mean_p) * kappa
+    alpha = mean_p * strength
+    beta = (1.0 - mean_p) * strength
     return rng.beta(alpha, beta, size=N)
 
+# Extension Fig 3 plot:
+# Compare Pid for unweighted vs weighted plurality under heterogeneous accuracies
+def Pid_vs_p_weighted(N=50, m=100, mean_p=0.10, strengths=(5, 10, 30, 100, 300), trials=5000):
+    pid_unw = []
+    pid_w = []
 
-def extension_pid_print(
-    N: int = 50,
-    m: int = 100,
-    mean_p: float = 0.10,
-    kappas: list[float] = [5, 10, 30, 100, 300],
-    trials: int = 5000,
-    show_plot: bool = True,
-):
-    # Extension: Pid heterogeneous unweighted plurality vs. weighted plurality
-    rows = []
-    for kappa in kappas:
-        pi = sample_pi_beta(N, mean_p, kappa, seed=123)
+    for strength in strengths:
+        pi = sample_pi_beta(N, mean_p, strength, seed=123)
 
-        pid_u = pid_hetero_unweighted(N, m, pi, trials=trials, seed=1)
-        pid_w = pid_hetero_weighted(N, m, pi, trials=trials, seed=1)
+        pid_u_val = pid_hetero_unweighted(N, m, pi, trials=trials, seed=1)
+        pid_w_val = pid_hetero_weighted(N, m, pi, trials=trials, seed=1)
 
-        rows.append({
-            "kappa": kappa,
-            "pi_mean": float(pi.mean()),
-            "pi_std": float(pi.std()),
-            "pid_unweighted": pid_u,
-            "pid_weighted": pid_w,
-        })
+        pid_unw.append(pid_u_val)
+        pid_w.append(pid_w_val)
 
-    df = pd.DataFrame(rows)
+    plt.figure()
+    plt.plot(strengths, pid_unw, marker="o", label="Unweighted plurality")
+    plt.plot(strengths, pid_w, marker="o", label="Weighted plurality")
+    plt.xscale("log")
+    plt.xlabel("strength (higher = less heterogeneity)")
+    plt.ylabel("Pid")
+    plt.title(f"Pid vs Strength of Heterogenity with N={N}, m={m}, mean_p={mean_p}")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
-    print("\n Extension: Pid with heterogeneous accuracies ")
-    print(f"N={N}, m={m}, mean_p_target={mean_p}, trials={trials}")
-    print(df.to_string(index=False))
-
-    if show_plot:
-        plt.figure()
-        plt.plot(df["kappa"], df["pid_unweighted"], marker="o", label="Unweighted plurality")
-        plt.plot(df["kappa"], df["pid_weighted"], marker="o", label="Weighted plurality")
-        plt.xscale("log")
-        plt.xlabel("kappa")
-        plt.ylabel("Pid")
-        plt.title("Extension: Unweighted vs Weighted (Pid)")
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-
-
-def extension_roc_print(
-    N: int = 50,
-    m: int = 100,
-    mean_p: float = 0.10,
-    kappa: float = 10,
-    trials: int = 5000,
-    show_plot: bool = True,
-):
-    # Extension: ROC curves of unweighted vs weighted
-    pi = sample_pi_beta(N, mean_p, kappa, seed=456)
+# Extension Fig 5 ROC plot:
+# Compare ROC curves (Pdir vs Pfar) for unweighted vs weighted plurality under heterogeneity
+def Pdir_vs_Pfar_weighted(N=50, m=100, mean_p=0.10, strength=10, trials=5000):
+    pi = sample_pi_beta(N, mean_p, strength, seed=456)
     Ts = np.arange(1, N + 1)
 
     # Unweighted ROC
-    pfar_u = np.array([pfar(N, m, int(T), trials=trials, seed=7) for T in Ts])
-    pdir_u = np.array([pdir_hetero_unweighted(N, m, pi, int(T), trials=trials, seed=8) for T in Ts])
+    pfar_unw = np.array([pfar(N, m, int(T), trials=trials, seed=7) for T in Ts])
+    pdir_unw = np.array([pdir_hetero_unweighted(N, m, pi, int(T), trials=trials, seed=8) for T in Ts])
 
     # Weighted ROC
     pfar_w = np.array([pfar_weighted_outsider(N, m, pi, int(T), trials=trials, seed=7) for T in Ts])
     pdir_w = np.array([pdir_hetero_weighted(N, m, pi, int(T), trials=trials, seed=8) for T in Ts])
 
-    df = pd.DataFrame({
-        "T": Ts,
-        "pfar_unweighted": pfar_u,
-        "pdir_unweighted": pdir_u,
-        "pfar_weighted": pfar_w,
-        "pdir_weighted": pdir_w,
-    })
+    # Sort by Pf ar so the ROC curves look clean
+    ord_unw = np.argsort(pfar_unw)
+    ord_w = np.argsort(pfar_w)
 
-    print("\n Extension: ROC unweighted vs weighted ")
-    print(f"N={N}, m={m}, mean_p~{pi.mean():.4f}, std_p~{pi.std():.4f}, kappa={kappa}, trials={trials}")
-    print(df.to_string(index=False))
-
-    if show_plot:
-        ord_u = np.argsort(pfar_u)
-        ord_w = np.argsort(pfar_w)
-
-        plt.figure()
-        plt.plot(pfar_u[ord_u], pdir_u[ord_u], label="Unweighted plurality")
-        plt.plot(pfar_w[ord_w], pdir_w[ord_w], label="Weighted plurality")
-        plt.xlabel("Pfar")
-        plt.ylabel("Pdir")
-        plt.title("Extension ROC: Unweighted vs Weighted")
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-
+    plt.figure()
+    plt.plot(pfar_unw[ord_unw], pdir_unw[ord_unw], label="Unweighted plurality")
+    plt.plot(pfar_w[ord_w], pdir_w[ord_w], label="Weighted plurality")
+    plt.xlabel("Pfar")
+    plt.ylabel("Pdir")
+    plt.title(f"Pdir vs Pfar with N={N}, m={m}, mean_p={mean_p}, strength={strength}")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 def main():
-    extension_pid_print(show_plot=True)
-    extension_roc_print(show_plot=True)
-
+    Pid_vs_p_weighted()
+    Pdir_vs_Pfar_weighted()
 
 if __name__ == "__main__":
     main()
