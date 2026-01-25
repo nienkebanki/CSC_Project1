@@ -1,6 +1,5 @@
 # src/theory.py
 # Consists of all necessary formulas from the paper!
-
 from __future__ import annotations
 import math
 
